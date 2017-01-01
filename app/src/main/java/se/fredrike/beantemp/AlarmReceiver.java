@@ -1,5 +1,6 @@
 package se.fredrike.beantemp;
 
+import android.annotation.SuppressLint;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.ComponentName;
@@ -17,8 +18,6 @@ public class AlarmReceiver  extends WakefulBroadcastReceiver {
     // The pending intent that is triggered when the alarm fires.
     private PendingIntent alarmIntent;
 
-    public int sleepM = 10;
-
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -33,6 +32,7 @@ public class AlarmReceiver  extends WakefulBroadcastReceiver {
      * alarm fires, the app broadcasts an Intent to this WakefulBroadcastReceiver.
      * @param context
      */
+    @SuppressLint("ShortAlarm")
     public void setAlarm(Context context) {
         alarmMgr = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
         Intent intent = new Intent(context, AlarmReceiver.class);
@@ -69,6 +69,7 @@ public class AlarmReceiver  extends WakefulBroadcastReceiver {
          *         AlarmManager.INTERVAL_HALF_HOUR, alarmIntent);
          */
 
+        int sleepM = 10;
         alarmMgr.setRepeating(AlarmManager.ELAPSED_REALTIME_WAKEUP,
                 0, sleepM * 60 * 1000, alarmIntent);
 

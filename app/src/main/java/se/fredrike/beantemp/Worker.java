@@ -1,7 +1,6 @@
 package se.fredrike.beantemp;
 
 import android.app.IntentService;
-import android.app.Notification;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
@@ -37,22 +36,22 @@ public class Worker extends IntentService {
     }
     private static String API = "";
     private static final String EMONCMS = "https://www.emoncms.org/input/post.json?apikey=" + API + "&";
-    NotificationManager mNotificationManager;
-    Notification.Builder mBuilder;
+
+    private NotificationManager mNotificationManager;
 
 
-    final List<Bean> beans = new ArrayList<>();
-    Worker mWorker = this;
-    TextView textView = null;
-    List<String> bleAddressList = new ArrayList<>();
-    int totalThreads = 0;
+    private final List<Bean> beans = new ArrayList<>();
+    private final Worker mWorker = this;
+    private TextView textView = null;
+    private final List<String> bleAddressList = new ArrayList<>();
+    private int totalThreads = 0;
 
     class MyThread implements Runnable {
 
-        TextView tv;
-        String mac;
-        Bean b;
-        Thread th;
+        final TextView tv;
+        final String mac;
+        final Bean b;
+        final Thread th;
         int temp, battery;
 
         MyThread(TextView tv1, String mac1, Bean b1) {
@@ -127,7 +126,7 @@ public class Worker extends IntentService {
         BeanManager.getInstance().startDiscovery(listener);
     }
 
-    BeanDiscoveryListener listener = new BeanDiscoveryListener() {
+    private final BeanDiscoveryListener listener = new BeanDiscoveryListener() {
         @Override
         public void onBeanDiscovered(Bean bean, int rssi) {
             beans.add(bean);
@@ -140,7 +139,7 @@ public class Worker extends IntentService {
         }
     };
 
-    BeanListener beanListener = new BeanListener() {
+    private final BeanListener beanListener = new BeanListener() {
         @Override
         public void onConnected() {
             if (textView != null) {
@@ -154,7 +153,7 @@ public class Worker extends IntentService {
                 Bean b = beans.get(i);
                 String baddr = b.getDevice().getAddress();
                 if (b.isConnected()) {
-                    if (bleAddressList.contains(baddr) == false) {
+                    if (!bleAddressList.contains(baddr)) {
                         bleAddressList.add(baddr);
                         ++totalThreads;
                         new MyThread(textView, baddr, b);
@@ -269,8 +268,7 @@ public class Worker extends IntentService {
             conn.setDoInput(true);
             // Start the query
             conn.connect();
-            InputStream stream = conn.getInputStream();
-            return stream;
+            return conn.getInputStream();
         }
 
         /**

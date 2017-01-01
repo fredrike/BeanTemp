@@ -7,14 +7,13 @@ import android.widget.TextView;
 
 
 public class BeanTempActivity extends AppCompatActivity {
-    se.fredrike.beantemp.AlarmReceiver alarm = new AlarmReceiver();
-    TextView textView = null;
+    private final se.fredrike.beantemp.AlarmReceiver alarm = new AlarmReceiver();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_beantemp);
-        textView = (TextView) findViewById(R.id.text1);
+        TextView textView = (TextView) findViewById(R.id.text1);
         textView.setMovementMethod(new ScrollingMovementMethod());
         //BeanManager.getInstance().startDiscovery(listener);
         alarm.setAlarm(this);
