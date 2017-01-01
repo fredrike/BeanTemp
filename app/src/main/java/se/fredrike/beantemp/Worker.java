@@ -119,12 +119,14 @@ public class Worker extends IntentService {
         mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         System.out.println("Alarm Triggered");
         beans.clear();
+        bleAddressList.clear();
         BeanManager.getInstance().startDiscovery(listener);
     }
 
     public void runOnce(TextView tw) {
         textView = tw;
         beans.clear();
+        bleAddressList.clear();
         BeanManager.getInstance().startDiscovery(listener);
     }
 
