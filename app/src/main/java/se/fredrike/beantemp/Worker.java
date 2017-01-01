@@ -118,11 +118,13 @@ public class Worker extends IntentService {
     protected void onHandleIntent(Intent intent) {
         mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         System.out.println("Alarm Triggered");
+        beans.clear();
         BeanManager.getInstance().startDiscovery(listener);
     }
 
     public void runOnce(TextView tw) {
         textView = tw;
+        beans.clear();
         BeanManager.getInstance().startDiscovery(listener);
     }
 
