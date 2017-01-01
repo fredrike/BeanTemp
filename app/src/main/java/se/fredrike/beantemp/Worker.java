@@ -191,6 +191,8 @@ public class Worker extends IntentService {
 //            System.out.println("data received: " + data.toString());
         }
 
+        @Override
+        public void onReadRemoteRssi(final int rssi) {}
     };
 
     // Post a notification indicating whether a doodle was found.
