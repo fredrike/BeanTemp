@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <PreferenceCategory
+        android:title="API Settings">
+    <EditTextPreference
+        android:key="emoncms_api"
+        android:title="Emoncms write API-key"
+        android:summary="found at https://emoncms.org/user/view"/>
+    </PreferenceCategory>
+</PreferenceScreen>

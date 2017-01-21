@@ -4,8 +4,10 @@ import android.app.IntentService;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.SystemClock;
+import android.preference.PreferenceManager;
 import android.support.v4.app.NotificationCompat;
 import android.widget.TextView;
 
@@ -25,6 +27,7 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -34,40 +37,31 @@ public class Worker extends IntentService {
     public Worker() {
         super("SchedulingService");
     }
-    private static String API = "";
-    private static final String EMONCMS = "https://www.emoncms.org/input/post.json?apikey=" + API + "&";
+
+    private String API = "";
+    private String EMONCMS = "https://www.emoncms.org/input/post.json?apikey=";
 
     private NotificationManager mNotificationManager;
 
-
-    private final List<Bean> beans = new ArrayList<>();
     private final Worker mWorker = this;
     private TextView textView = null;
     private final List<String> bleAddressList = new ArrayList<>();
     private int totalThreads = 0;
 
-    class MyThread implements Runnable {
+    private class beanManager {
+        private TextView myTextView;
+        private String myMac;
+        private Bean myBean;
+        private int temp, battery;
 
-        final TextView tv;
-        final String mac;
-        final Bean b;
-        final Thread th;
-        int temp, battery;
-
-        MyThread(TextView tv1, String mac1, Bean b1) {
-            tv = tv1;
-            mac = mac1;
-            b = b1;
+        beanManager(TextView textView, String mac, Bean bean) {
+            myTextView = textView;
+            myMac = mac;
+            myBean = bean;
             temp = 255;
             battery = 255;
-            th = new Thread(this);
-            th.setPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND);
-            th.start();
-        }
 
-        @Override
-        public void run() {
-            b.readTemperature(new Callback<Integer>() {
+            myBean.readTemperature(new Callback<Integer>() {
                 @Override
                 public void onResult(Integer result) {
                     temp = result;
@@ -78,7 +72,7 @@ public class Worker extends IntentService {
                     }
                 }
             });
-            b.readBatteryLevel(new Callback<BatteryLevel>() {
+            myBean.readBatteryLevel(new Callback<BatteryLevel>() {
                 @Override
                 public void onResult(BatteryLevel result) {
                     battery = result.getPercentage();
@@ -92,77 +86,83 @@ public class Worker extends IntentService {
         }
 
         private void pushData() {
-            String name = b.getDevice().getName();
+            String name = myBean.getDevice().getName();
             String data = "\uD83C\uDF21 " + temp + "°,  \uD83D\uDD0B " + battery + "%" ;
-            String msg = name + " " + mac + ": " + " " + data;
-            b.disconnect();
-            if (tv != null) {
-                tv.append("\n" + msg);
-                tv.invalidate();
+            String msg = name + " " + myMac + ": " + " " + data;
+            myBean.disconnect();
+            if (myTextView != null) {
+                myTextView.append("\n" + msg);
+                myTextView.invalidate();
             }
 
             System.out.println(msg);
             try {
-                sendNotification(name + " " + mac.replace(":", ""), Long.parseLong(mac.replace(":", ""), 16), data);
+                sendNotification(name + " " + myMac.replace(":", ""), Long.parseLong(myMac.replace(":", ""), 16), data);
             } catch (Exception e) { System.out.print(e.toString());}
 
-            String urlString = EMONCMS + "json={" + "\"uptime\":" + (SystemClock.elapsedRealtime() / 1000) + "," +
-                    "\"" + mac.replace(":", "") + "-temp\":" + temp + ",\"" + mac.replace(":", "") + "-battery\":" + battery + "}";
-            new urlRequest().execute(urlString);
-            System.out.println("url: " + urlString);
+            if( API.length() > 0) {
+                String urlString = EMONCMS + "json={" + "\"uptime\":" + (SystemClock.elapsedRealtime() / 1000) + "," +
+                        "\"" + myMac.replace(":", "") + "-temp\":" + temp + ",\"" + myMac.replace(":", "") + "-battery\":" + battery + "}";
+                System.out.println("url: " + urlString);
+                new urlRequest().execute(urlString);
+            }
         }
     }
 
-
     @Override
     protected void onHandleIntent(Intent intent) {
-        mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         System.out.println("Alarm Triggered");
-        beans.clear();
-        bleAddressList.clear();
-        BeanManager.getInstance().startDiscovery(listener);
+        mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        Context ctx = getApplicationContext();
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+
+        run(null, prefs);
     }
 
-    public void runOnce(TextView tw) {
+    public void run(TextView tw, SharedPreferences prefs) {
         textView = tw;
-        beans.clear();
+        if (prefs != null) {
+            API = prefs.getString("emoncms_api", "");
+            System.out.println("EMONCMS-API-key: " + API);
+        }
+        if ( API.length() > 0) EMONCMS = EMONCMS + API + "&";
         bleAddressList.clear();
+        BeanManager.getInstance().cancelDiscovery();
+        BeanManager.getInstance().forgetBeans();
+        BeanManager.getInstance().setScanTimeout(15);
         BeanManager.getInstance().startDiscovery(listener);
     }
 
     private final BeanDiscoveryListener listener = new BeanDiscoveryListener() {
         @Override
         public void onBeanDiscovered(Bean bean, int rssi) {
-            beans.add(bean);
+            System.out.println("Bean discovered");
             bean.connect(mWorker, beanListener);
         }
 
         @Override
         public void onDiscoveryComplete() {
-            System.out.println("Total beans discovered: " + beans.size());
+            System.out.println("Total beans discovered: " +
+                   BeanManager.getInstance().getBeans().size());
         }
     };
 
     private final BeanListener beanListener = new BeanListener() {
         @Override
         public void onConnected() {
-            if (textView != null) {
-                textView.append("\nA new bean has been connected.");
-            }
+            Collection<Bean> beans = BeanManager.getInstance().getBeans();
+
             System.out.println("A bean has connected.");
-            System.out.println("Total bean: " + beans.size());
+            System.out.println("Total bean(s): " + beans.size());
             System.out.println("Total threads started so far: " + totalThreads);
 
-            for (int i = 0; i < beans.size(); i++) {
-                Bean b = beans.get(i);
-                String baddr = b.getDevice().getAddress();
-                if (b.isConnected()) {
+            for (Bean bean : beans) {
+                if (bean.isConnected()) {
+                    String baddr = bean.getDevice().getAddress();
                     if (!bleAddressList.contains(baddr)) {
                         bleAddressList.add(baddr);
-                        ++totalThreads;
-                        new MyThread(textView, baddr, b);
-                        System.out.println("Total threads started now: " + totalThreads);
-                        return;
+                        new beanManager(textView, baddr, bean);
+                        System.out.println("Total threads started now: " + ++totalThreads);
                     }
                 }
             }
@@ -184,20 +184,15 @@ public class Worker extends IntentService {
         }
 
         @Override
-        public void onScratchValueChanged(ScratchBank bank, byte[] value) {
-//            System.out.println("Bean scratch value changed");
-        }
+        public void onScratchValueChanged(ScratchBank bank, byte[] value) {}
 
         @Override
-        public void onSerialMessageReceived(byte[] data) {
-//            System.out.println("data received: " + data.toString());
-        }
+        public void onSerialMessageReceived(byte[] data) {}
 
         @Override
         public void onReadRemoteRssi(final int rssi) {}
     };
 
-    // Post a notification indicating whether a doodle was found.
     private void sendNotification(String title, long mId, String text) {
         if (mNotificationManager == null) {
             return;
@@ -211,7 +206,6 @@ public class Worker extends IntentService {
                         .setGroup(String.valueOf(mId))
                 ;
 
-        //=  (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         mNotificationManager.notify((int) mId, mBuilder.build());
     }
 
